@@ -1,0 +1,18 @@
+plugin: microsoft.ad.ldap
+server: dc1.corp.example.com
+base_dn: dc=corp,dc=example,dc=com
+username: svc-ansible@CORP.EXAMPLE.COM
+password: MyPlainPassword123
+tls_mode: ldaps
+query_filter: (objectClass=computer)
+attributes:
+  dNSHostName:
+    hostvar: ansible_host
+  operatingSystem:
+    hostvar: os
+  memberOf:
+    hostvar: ad_groups
+keyed_groups:
+  - key: os | lower
+    prefix: os_
+    default_value: unknown
