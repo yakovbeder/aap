@@ -1,0 +1,20 @@
+- name: Demo – Manage Users via Survey
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    user_name: "{{ user_name | default('demo_user') }}"
+    user_state: "{{ user_state | default('present') }}"
+
+  tasks:
+    - name: Ensure user is in desired state
+      ansible.builtin.user:
+        name: "{{ user_name }}"
+        state: "{{ user_state }}"
+      register: user_result
+
+    - name: Display result
+      ansible.builtin.debug:
+        msg: >
+          User '{{ user_name }}' has been set to state '{{ user_state }}'.
