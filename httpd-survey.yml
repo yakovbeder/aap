@@ -1,0 +1,10 @@
+---
+- name: Demo – Manage HTTPD package via Survey
+  hosts: all
+  gather_facts: false
+
+  tasks:
+    - name: Ensure Apache HTTP server is in the desired state
+      ansible.builtin.package:
+        name: httpd
+        state: "{{ httpd_state }}"
