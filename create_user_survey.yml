@@ -3,9 +3,9 @@
   #become: true
   gather_facts: false
 
-  vars:
-    user_name: "{{ user_name | default('demo_user') }}"
-    user_state: "{{ user_state | default('present') }}"
+  # vars:
+  #   user_name: "{{ user_name | default('demo_user') }}"
+  #   user_state: "{{ user_state | default('present') }}"
 
   tasks:
     - name: Ensure user is in desired state
