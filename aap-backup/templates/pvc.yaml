@@ -9,4 +9,4 @@ spec:
   resources:
     requests:
       storage: {{ .Values.storageSize }}
-  storageClassName: backup-retain
+  storageClassName: {{ .Values.storageClassName }}

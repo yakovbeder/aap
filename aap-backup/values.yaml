@@ -2,6 +2,7 @@ namespace: aap-backup
 schedule: "0 * * * *" # every hour
 backupFilenamePrefix: export-results
 storageSize: 1Gi
+storageClassName: ocs-storagecluster-cephfs
 controllerHost: "https://aap-aap.apps.yb-ocp4.rh-igc.com"
 controllerUsername: "admin"
 controllerAdminSecretName: "aap-controller-admin-password"
