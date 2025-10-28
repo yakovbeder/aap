@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: aap-backup
+  namespace: {{ .Values.namespace }}
+spec:
+  schedule: {{ .Values.schedule | quote }}
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: default
+          restartPolicy: OnFailure
+          volumes:
+            - name: playbook-volume
+              configMap:
+                name: aap-backup-playbook
+            - name: backup-volume
+              persistentVolumeClaim:
+                claimName: aap-backup-pvc
+            - name: controller-secret
+              secret:
+                secretName: {{ .Values.controllerAdminSecretName }}
+          containers:
+            - name: backup-runner
+              image: quay.io/ansible/awx-ee:latest
+              command: ["ansible-playbook", "/opt/playbook/backup.yaml"]
+              env:
+                - name: CONTROLLER_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ .Values.controllerAdminSecretName }}
+                      key: password
+                - name: CONTROLLER_HOST
+                  value: "{{ .Values.controllerHost }}"
+                - name: CONTROLLER_USERNAME
+                  value: "{{ .Values.controllerUsername }}"
+                - name: CONTROLLER_VERIFY_SSL
+                  value: "false"
+                - name: BACKUP_PREFIX
+                  value: "{{ .Values.backupFilenamePrefix }}"
+              volumeMounts:
+                - name: playbook-volume
+                  mountPath: /opt/playbook
+                - name: backup-volume
+                  mountPath: /results

@@ -1,0 +1,17 @@
+apiVersion: v2
+name: aap-backup
+description: A Helm chart for automated backup of Ansible Automation Platform
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - ansible
+  - automation
+  - backup
+  - aap
+home: https://github.com/yakovbeder/aap
+sources:
+  - https://github.com/yakovbeder/aap
+maintainers:
+  - name: Yakov Beder
+    email: yakovbeder@gmail.com

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aap-backup-playbook
+  namespace: {{ .Values.namespace }}
+data:
+  backup.yaml: |-
+{{ .Files.Get "files/playbook.yaml" | indent 4 }}

@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: aap-backup-failure
+  namespace: {{ .Values.namespace }}
+spec:
+  groups:
+    - name: aap-backup.rules
+      rules:
+        - alert: AAPBackupJobFailed
+          expr: |
+            kube_job_status_failed{job=~"aap-backup.*", namespace="{{ .Values.namespace }}"} > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "AAP Backup CronJob failed in namespace {{ .Values.namespace }}"
+            description: "The AAP backup CronJob has failed. Please check pod logs for details."
