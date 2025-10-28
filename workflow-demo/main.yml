@@ -1,0 +1,7 @@
+---
+- name: Main playbook
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Simulate task
+      command: /bin/true

@@ -1,0 +1,8 @@
+---
+- name: Success playbook
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Print success message
+      debug:
+        msg: "Main job completed successfully!"

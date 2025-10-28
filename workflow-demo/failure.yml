@@ -1,0 +1,8 @@
+---
+- name: Failure playbook
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Print failure message
+      debug:
+        msg: "Main job failed! Triggering failure workflow."
