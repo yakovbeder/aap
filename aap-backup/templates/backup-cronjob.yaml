@@ -11,8 +11,20 @@ spec:
     spec:
       template:
         spec:
-          serviceAccountName: default
+          serviceAccountName: aap-backup-sa
           restartPolicy: OnFailure
+          initContainers:
+            - name: secret-fetcher
+              image: bitnami/kubectl:latest
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  kubectl get secret {{ .Values.controllerAdminSecretName }} -n {{ .Values.controllerAdminSecretNamespace }} -o jsonpath='{.data.password}' | base64 -d > /shared/controller-password
+                  echo "export CONTROLLER_PASSWORD=$(cat /shared/controller-password)" > /shared/set-password.sh
+              volumeMounts:
+                - name: shared-secret
+                  mountPath: /shared
           volumes:
             - name: playbook-volume
               configMap:
@@ -20,19 +32,18 @@ spec:
             - name: backup-volume
               persistentVolumeClaim:
                 claimName: aap-backup-pvc
-            - name: controller-secret
-              secret:
-                secretName: {{ .Values.controllerAdminSecretName }}
+            - name: shared-secret
+              emptyDir: {}
           containers:
             - name: backup-runner
               image: quay.io/ansible/awx-ee:latest
-              command: ["ansible-playbook", "/opt/playbook/backup.yaml"]
+              command: 
+                - /bin/sh
+                - -c
+                - |
+                  source /shared/set-password.sh
+                  ansible-playbook /opt/playbook/backup.yaml
               env:
-                - name: CONTROLLER_PASSWORD
-                  valueFrom:
-                    secretKeyRef:
-                      name: {{ .Values.controllerAdminSecretName }}
-                      key: password
                 - name: CONTROLLER_HOST
                   value: "{{ .Values.controllerHost }}"
                 - name: CONTROLLER_USERNAME
@@ -46,3 +57,5 @@ spec:
                   mountPath: /opt/playbook
                 - name: backup-volume
                   mountPath: /results
+                - name: shared-secret
+                  mountPath: /shared
