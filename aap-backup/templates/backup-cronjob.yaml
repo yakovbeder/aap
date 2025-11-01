@@ -25,9 +25,11 @@ spec:
                 secretName: {{ .Values.controllerAdminSecretName }}
           containers:
             - name: backup-runner
-              image: quay.io/ansible/awx-ee:latest
+              image: registry.redhat.io/ansible-automation-platform-25/ee-supported-rhel9:latest
               command: ["ansible-playbook", "/opt/playbook/backup.yaml"]
               env:
+                - name: HOME
+                  value: /runner
                 - name: CONTROLLER_PASSWORD
                   valueFrom:
                     secretKeyRef:

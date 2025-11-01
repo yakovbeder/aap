@@ -8,11 +8,15 @@
     CONTROLLER_USERNAME: "{{ lookup('env','CONTROLLER_USERNAME') }}"
     CONTROLLER_PASSWORD: "{{ lookup('env','CONTROLLER_PASSWORD') }}"
     CONTROLLER_VERIFY_SSL: false
+
   vars:
     ocp_api: "https://kubernetes.default.svc"
     token_path: "/var/run/secrets/kubernetes.io/serviceaccount/token"
 
   tasks:
+    #######################################################################
+    # 1️⃣ Read and decode service account token
+    #######################################################################
     - name: Read service account token
       slurp:
         src: "{{ token_path }}"
@@ -22,6 +26,9 @@
       set_fact:
         sa_token: "{{ sa_token_raw['content'] | b64decode }}"
 
+    #######################################################################
+    # 2️⃣ Authenticate to OpenShift
+    #######################################################################
     - name: Login to OpenShift using service account token
       shell: |
         oc login --token="{{ sa_token }}" --server="{{ ocp_api }}" --insecure-skip-tls-verify=true
@@ -29,6 +36,9 @@
         KUBECONFIG: /tmp/kubeconfig
       register: oc_login
 
+    #######################################################################
+    # 3️⃣ Prepare timestamp and backup file name
+    #######################################################################
     - name: Set timestamp
       set_fact:
         timestamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
@@ -37,6 +47,9 @@
       set_fact:
         export_file: "/results/{{ lookup('env','BACKUP_PREFIX') }}-{{ timestamp }}.yaml"
 
+    #######################################################################
+    # 4️⃣ Export all Controller assets
+    #######################################################################
     - name: Export all assets
       ansible.controller.export:
         all: true
@@ -45,29 +58,32 @@
       delay: 15
       until: export_results is succeeded
 
-# Alternative to export task in case the "ansible.controller" collection you have in the image is old and do not respect the CONTROLLER_VERIFY_SSL: false env
-#    - name: Export all controller assets using awx CLI
-#      command: >
-#        awx --conf.host {{ lookup('env','CONTROLLER_HOST') }}
-#            --conf.username {{ lookup('env','CONTROLLER_USERNAME') }}
-#            --conf.password {{ lookup('env','CONTROLLER_PASSWORD') }}
-#            --conf.insecure
-#            --conf.format json
-#            export
-#      register: export_results
-#      environment:
-#        PATH: "/usr/local/bin:/usr/bin:/bin"  # Ensure awx is in path
+    #######################################################################
+    # 5️⃣ Debug structure (optional)
+    #######################################################################
+    - name: Debug export result keys (optional)
+      debug:
+        msg:
+          - "Export result keys: {{ export_results.keys() | list }}"
+          - "Assets type: {{ export_results.assets | type_debug | default('n/a') }}"
+      when: export_results is defined
 
+    #######################################################################
+    # 6️⃣ Write exported data to YAML file
+    #######################################################################
     - name: Write to output file
       copy:
-        content: "{{ export_results.stdout | from_json | to_nice_yaml(width=50, explicit_start=true, explicit_end=true) }}"
+        content: "{{ export_results.assets | to_nice_yaml(width=50, explicit_start=true, explicit_end=true) }}"
         dest: "{{ export_file }}"
+      when: export_results.assets is defined
 
+    #######################################################################
+    # 7️⃣ Rotate old backups (keep latest 20 files)
+    #######################################################################
     - name: Get list of existing export files
       find:
         paths: /results
         patterns: "{{ lookup('env','BACKUP_PREFIX') }}-*.yaml"
-        age: 0
         recurse: no
         file_type: file
       register: export_files
@@ -78,3 +94,18 @@
         state: absent
       loop: "{{ export_files.files | sort(attribute='mtime') | reverse | slice(20, export_files.files | length) }}"
       when: export_files.matched > 20
+
+    #######################################################################
+    # 8️⃣ (Optional) AWX CLI fallback if controller.export fails
+    #######################################################################
+    # - name: Export all controller assets using awx CLI
+    #   command: >
+    #     awx --conf.host {{ lookup('env','CONTROLLER_HOST') }}
+    #         --conf.username {{ lookup('env','CONTROLLER_USERNAME') }}
+    #         --conf.password {{ lookup('env','CONTROLLER_PASSWORD') }}
+    #         --conf.insecure
+    #         --conf.format json
+    #         export
+    #   register: export_results
+    #   environment:
+    #     PATH: "/usr/local/bin:/usr/bin:/bin"
