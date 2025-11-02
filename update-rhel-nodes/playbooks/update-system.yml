@@ -21,9 +21,10 @@
       ansible.builtin.include_role:
         name: redhat.rhel_system_roles.timesync
 
-    - name: Upgrade all packages
+    - name: Upgrade all packages  # noqa: latest[git]
       ansible.builtin.dnf:
         name: "*"
+        # System updates require upgrading all packages to latest
         state: latest
         update_cache: true
       register: update_result

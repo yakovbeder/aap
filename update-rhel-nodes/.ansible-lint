@@ -2,5 +2,9 @@
 # Ansible Lint configuration for system update playbooks
 # Allow state: latest for system update playbooks as they require upgrading all packages
 skip_list:
-  - latest
+  - latest  # Rule ID for "Package installs should not use latest"
+  - package-latest  # Alternative rule name
+  - ansible-lint[package-latest]  # Full rule identifier
+warn_list:
+  - latest  # Treat as warning instead of error
 
