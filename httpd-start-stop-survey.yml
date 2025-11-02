@@ -5,6 +5,6 @@
 
   tasks:
     - name: Ensure Apache HTTP server is in the desired state
-      ansible.builtin.package:
+      ansible.builtin.service:
         name: httpd
         state: "{{ httpd_service_state }}"
