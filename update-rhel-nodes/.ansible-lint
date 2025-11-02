@@ -1,0 +1,6 @@
+---
+# Ansible Lint configuration for system update playbooks
+# Allow state: latest for system update playbooks as they require upgrading all packages
+skip_list:
+  - latest
+
