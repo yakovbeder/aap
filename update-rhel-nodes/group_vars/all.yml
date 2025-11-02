@@ -12,7 +12,7 @@ system_update_reboot_timeout: 900
 system_update_reboot_message: "System reboot initiated by AAP system update playbook."
 
 # Timesync configuration for redhat.rhel_system_roles.timesync
-ntp_servers_config:
+timesync_ntp_servers:
   - hostname: 0.pool.ntp.org
     iburst: true
   - hostname: 1.pool.ntp.org

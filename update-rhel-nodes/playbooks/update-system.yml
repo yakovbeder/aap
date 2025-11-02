@@ -17,8 +17,6 @@
     - name: Configure system time synchronization
       ansible.builtin.include_role:
         name: redhat.rhel_system_roles.timesync
-      vars:
-        timesync_ntp_servers: "{{ ntp_servers_config }}"
 
     - name: Update all packages using {{ system_update_method }}
       ansible.builtin.command: >
