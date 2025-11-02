@@ -1,0 +1,12 @@
+---
+# Global variables for RHEL system updates
+
+# Automatically reboot if kernel or critical packages updated
+system_update_reboot: true
+
+# Use dnf (recommended for RHEL 8/9)
+system_update_method: dnf
+
+# Optional fine-tuning
+system_update_reboot_timeout: 900
+system_update_reboot_message: "System reboot initiated by AAP system update playbook."

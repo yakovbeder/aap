@@ -1,0 +1,11 @@
+---
+- name: Apply RHEL system updates
+  hosts: all
+  become: true
+  gather_facts: true
+
+  collections:
+    - redhat.rhel_system_roles
+
+  roles:
+    - role: redhat.rhel_system_roles.system_update
