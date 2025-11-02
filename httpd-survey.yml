@@ -7,4 +7,4 @@
     - name: Ensure Apache HTTP server is in the desired state
       ansible.builtin.package:
         name: httpd
-        state: "{{ httpd_service_state }}"
+        state: "{{ httpd_state }}"
