@@ -10,17 +10,22 @@
   handlers:
     - name: Reboot System
       ansible.builtin.reboot:
-        reboot_timeout: "{{ system_update_reboot_timeout }}"
-        reboot_message: "{{ system_update_reboot_message }}"
+        reboot_timeout: "{{ system_update_reboot_timeout | default(900) }}"
+        reboot_message: >
+          {{ system_update_reboot_message |
+             default('System reboot initiated by AAP system update '
+                     'playbook.') }}
 
   tasks:
     - name: Configure system time synchronization
       ansible.builtin.include_role:
         name: redhat.rhel_system_roles.timesync
 
-    - name: Update all packages using {{ system_update_method }}
+    - name: >
+        Update all packages using
+        {{ system_update_method | default('dnf') }}
       ansible.builtin.command: >
-        {{ system_update_method }} upgrade -y
+        "{{ system_update_method | default('dnf') }} upgrade -y"
       register: update_result
       changed_when: >
         update_result.rc == 0 and
@@ -46,13 +51,13 @@
         msg: "System update completed. Reboot will be triggered."
       notify: Reboot System
       when:
-        - system_update_reboot | bool
+        - system_update_reboot | default(false) | bool
         - "'reboot_required' in reboot_check.stdout"
         - update_result.changed | default(false) | bool
 
     - name: Flush handlers to execute reboot
       ansible.builtin.meta: flush_handlers
       when:
-        - system_update_reboot | bool
+        - system_update_reboot | default(false) | bool
         - "'reboot_required' in reboot_check.stdout"
         - update_result.changed | default(false) | bool
