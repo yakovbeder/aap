@@ -21,16 +21,11 @@
       ansible.builtin.include_role:
         name: redhat.rhel_system_roles.timesync
 
-    - name: >
-        Update all packages using
-        {{ system_update_method | default('dnf') }}
-      ansible.builtin.command: >
-        "{{ system_update_method | default('dnf') }} upgrade -y"
+    - name: Update all packages using dnf
+      ansible.builtin.dnf:
+        update_only: true
+        update_cache: true
       register: update_result
-      changed_when: >
-        update_result.rc == 0 and
-        ('Nothing to do' not in update_result.stdout and
-         'No packages marked' not in update_result.stdout)
 
     - name: Check if reboot is required
       ansible.builtin.shell: |
