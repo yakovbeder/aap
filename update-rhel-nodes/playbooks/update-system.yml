@@ -1,10 +1,60 @@
 ---
-- name: Apply RHEL system updates
+- name: Apply RHEL system updates and configurations
   hosts: all
   become: true
   gather_facts: true
 
+  # Variables are automatically loaded from group_vars/all.yml
+
+  # Handlers are defined in handlers/main.yml
+  handlers:
+    - name: Reboot System
+      ansible.builtin.reboot:
+        reboot_timeout: "{{ system_update_reboot_timeout }}"
+        reboot_message: "{{ system_update_reboot_message }}"
+
   tasks:
-    - name: Update RHEL system packages
+    - name: Configure system time synchronization
       ansible.builtin.include_role:
-        name: redhat.rhel_system_roles.rhel_update
+        name: redhat.rhel_system_roles.timesync
+      vars:
+        timesync_ntp_servers: "{{ ntp_servers_config }}"
+
+    - name: Update all packages using {{ system_update_method }}
+      ansible.builtin.command: >
+        {{ system_update_method }} upgrade -y
+      register: update_result
+      changed_when: >
+        update_result.rc == 0 and
+        ('Nothing to do' not in update_result.stdout and
+         'No packages marked' not in update_result.stdout)
+
+    - name: Check if reboot is required
+      ansible.builtin.shell: |
+        set -o pipefail
+        if [ -f /var/run/reboot-required ] || \
+           [ -n "$(needs-restarting -r 2>&1 | \
+                   grep -i 'reboot')" ]; then
+          echo "reboot_required"
+        else
+          echo "no_reboot"
+        fi
+      register: reboot_check
+      changed_when: false
+      failed_when: false
+
+    - name: Notify handler if reboot is required
+      ansible.builtin.debug:
+        msg: "System update completed. Reboot will be triggered."
+      notify: Reboot System
+      when:
+        - system_update_reboot | bool
+        - "'reboot_required' in reboot_check.stdout"
+        - update_result.changed | default(false) | bool
+
+    - name: Flush handlers to execute reboot
+      ansible.builtin.meta: flush_handlers
+      when:
+        - system_update_reboot | bool
+        - "'reboot_required' in reboot_check.stdout"
+        - update_result.changed | default(false) | bool

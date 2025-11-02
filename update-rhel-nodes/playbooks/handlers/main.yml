@@ -1,0 +1,8 @@
+---
+# Handlers for RHEL system update playbook
+
+- name: Reboot System
+  ansible.builtin.reboot:
+    reboot_timeout: "{{ system_update_reboot_timeout }}"
+    reboot_message: "{{ system_update_reboot_message }}"
+
