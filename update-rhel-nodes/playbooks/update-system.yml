@@ -4,5 +4,7 @@
   become: true
   gather_facts: true
 
-  collections:
-    - redhat.rhel_system_roles
+  tasks:
+    - name: Update RHEL system packages
+      ansible.builtin.include_role:
+        name: redhat.rhel_system_roles.rhel_update
