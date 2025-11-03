@@ -1,9 +1,9 @@
 ---
 # Array of AAP Inventory definitions
 controller_inventories:
-  - name: "Demo Inventory"
+  - name: "Developers Inventory"
     organization: "Default"
-    description: "A sample inventory for demonstrations"
+    description: "A sample inventory for developers"
 
   - name: "Production Web Servers"
     organization: "Default"
