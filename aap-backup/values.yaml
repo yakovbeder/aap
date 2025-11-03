@@ -1,8 +1,10 @@
 namespace: aap
 schedule: "0 * * * *" # every hour
 backupFilenamePrefix: export-results
-storageSize: 1Gi
-storageClassName: ocs-storagecluster-cephfs
+# GitHub Configuration
+githubSecretName: "github-credentials" # Secret containing username and password keys
+githubRepoUrl: "https://github.com/yakovbeder/aap.git" # UPDATE THIS with your GitHub repo URL
+# Controller Configuration
 controllerHost: "https://aap-controller-aap.apps.yb-ocp4.rh-igc.com"
 controllerUsername: "admin"
 controllerAdminSecretName: "aap-controller-admin-password"

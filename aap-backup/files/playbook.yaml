@@ -1,4 +1,4 @@
-- name: AAP export playbook using service account token
+- name: AAP export playbook with private GitHub integration
   hosts: localhost
   gather_facts: false
   collections:
@@ -10,8 +10,12 @@
     CONTROLLER_VERIFY_SSL: false
 
   vars:
-    ocp_api: "https://kubernetes.default.svc"
-    token_path: "/var/run/secrets/kubernetes.io/serviceaccount/token"
+    # --- GitHub Configuration ---
+    github_repo_url: "{{ lookup('env','GITHUB_REPO_URL') }}"
+    github_repo_dir: "/tmp/aap_backups"
+    # --- Kubernetes Secret Paths ---
+    github_user_secret_path: "/etc/github-credentials/username"
+    github_password_secret_path: "/etc/github-credentials/password"
 
   tasks:
     #######################################################################
@@ -19,7 +23,7 @@
     #######################################################################
     - name: Read service account token
       slurp:
-        src: "{{ token_path }}"
+        src: "/var/run/secrets/kubernetes.io/serviceaccount/token"
       register: sa_token_raw
 
     - name: Decode service account token
@@ -31,13 +35,46 @@
     #######################################################################
     - name: Login to OpenShift using service account token
       shell: |
-        oc login --token="{{ sa_token }}" --server="{{ ocp_api }}" --insecure-skip-tls-verify=true
+        oc login --token="{{ sa_token }}" --server="https://kubernetes.default.svc" --insecure-skip-tls-verify=true
       environment:
         KUBECONFIG: /tmp/kubeconfig
       register: oc_login
 
     #######################################################################
-    # 3️⃣ Prepare timestamp and backup file name
+    # 3️⃣ Read GitHub credentials from mounted secret
+    #######################################################################
+    - name: Read GitHub username from secret
+      set_fact:
+        github_user: "{{ lookup('file', github_user_secret_path) }}"
+
+    - name: Read GitHub password from secret
+      set_fact:
+        github_password: "{{ lookup('file', github_password_secret_path) }}"
+      no_log: true # IMPORTANT: Prevents password/token from appearing in logs
+
+    #######################################################################
+    # 4️⃣ Set authenticated GitHub repo URL
+    #######################################################################
+    - name: Set authenticated GitHub repo URL
+      set_fact:
+        github_repo_url_auth: "https://{{ github_user }}:{{ github_password | urlencode }}@{{ github_repo_url.split('://')[1] }}"
+      no_log: true # IMPORTANT: Prevents the full URL with password from being logged
+
+    #######################################################################
+    # 5️⃣ Clone GitHub repository
+    #######################################################################
+    - name: Clone GitHub repository
+      ansible.builtin.git:
+        repo: "{{ github_repo_url_auth }}"
+        dest: "{{ github_repo_dir }}"
+        clone: yes
+        update: yes
+      environment:
+        GIT_SSL_NO_VERIFY: "true"
+      no_log: true # Hide the repo URL in logs
+
+    #######################################################################
+    # 6️⃣ Prepare timestamp and backup file name
     #######################################################################
     - name: Set timestamp
       set_fact:
@@ -45,46 +82,56 @@
 
     - name: Set output file path
       set_fact:
-        export_file: "/results/{{ lookup('env','BACKUP_PREFIX') }}-{{ timestamp }}.yaml"
+        export_file: "{{ github_repo_dir }}/{{ lookup('env','BACKUP_PREFIX') }}-{{ timestamp }}.yaml"
 
     #######################################################################
-    # 4️⃣ Export all Controller assets
+    # 7️⃣ Export only inventories (not all assets)
     #######################################################################
-    - name: Export all assets
+    - name: Export inventories
       ansible.controller.export:
-        all: true
+        inventories: true
       register: export_results
       retries: 5
       delay: 15
       until: export_results is succeeded
 
     #######################################################################
-    # 5️⃣ Debug structure (optional)
-    #######################################################################
-    - name: Debug export result keys (optional)
-      debug:
-        msg:
-          - "Export result keys: {{ export_results.keys() | list }}"
-          - "Assets type: {{ export_results.assets | type_debug | default('n/a') }}"
-      when: export_results is defined
-
-    #######################################################################
-    # 6️⃣ Write exported data to YAML file
+    # 8️⃣ Write exported data to YAML file
     #######################################################################
     - name: Write to output file
       copy:
-        content: "{{ export_results.assets | to_nice_yaml(width=50, explicit_start=true, explicit_end=true) }}"
+        content: "{{ export_results.stdout | from_json | to_nice_yaml(width=50, explicit_start=true, explicit_end=true) }}"
         dest: "{{ export_file }}"
-      when: export_results.assets is defined
 
     #######################################################################
-    # 7️⃣ Rotate old backups (keep latest 20 files)
+    # 9️⃣ Add and commit new backup file
+    #######################################################################
+    - name: Add and commit new backup file
+      shell: |
+        git config --global user.email "aap-backup@example.com"
+        git config --global user.name "AAP Backup Bot"
+        git add .
+        git commit -m "Add backup for {{ timestamp }}"
+      args:
+        chdir: "{{ github_repo_dir }}"
+
+    #######################################################################
+    # 🔟 Push new backup to GitHub
+    #######################################################################
+    - name: Push new backup to GitHub
+      shell: git push origin main # Or your default branch
+      args:
+        chdir: "{{ github_repo_dir }}"
+      environment:
+        GIT_SSL_NO_VERIFY: "true"
+
+    #######################################################################
+    # 1️⃣1️⃣ Rotate old backups (keep latest 20 files)
     #######################################################################
     - name: Get list of existing export files
       find:
-        paths: /results
+        paths: "{{ github_repo_dir }}"
         patterns: "{{ lookup('env','BACKUP_PREFIX') }}-*.yaml"
-        recurse: no
         file_type: file
       register: export_files
 
@@ -92,20 +139,20 @@
       file:
         path: "{{ item.path }}"
         state: absent
-      loop: "{{ export_files.files | sort(attribute='mtime') | reverse | slice(20, export_files.files | length) }}"
+      loop: "{{ export_files.files | sort(attribute='mtime') | reverse | slice(20) }}"
       when: export_files.matched > 20
+      register: deleted_files
 
     #######################################################################
-    # 8️⃣ (Optional) AWX CLI fallback if controller.export fails
+    # 1️⃣2️⃣ Commit and push deleted files
     #######################################################################
-    # - name: Export all controller assets using awx CLI
-    #   command: >
-    #     awx --conf.host {{ lookup('env','CONTROLLER_HOST') }}
-    #         --conf.username {{ lookup('env','CONTROLLER_USERNAME') }}
-    #         --conf.password {{ lookup('env','CONTROLLER_PASSWORD') }}
-    #         --conf.insecure
-    #         --conf.format json
-    #         export
-    #   register: export_results
-    #   environment:
-    #     PATH: "/usr/local/bin:/usr/bin:/bin"
+    - name: Commit and push deleted files
+      shell: |
+        git add . --all
+        git commit -m "Cleanup: Remove old backups"
+        git push origin main # Or your default branch
+      args:
+        chdir: "{{ github_repo_dir }}"
+      when: deleted_files.changed
+      environment:
+        GIT_SSL_NO_VERIFY: "true"

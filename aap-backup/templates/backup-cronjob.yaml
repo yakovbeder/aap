@@ -17,9 +17,9 @@ spec:
             - name: playbook-volume
               configMap:
                 name: aap-backup-playbook
-            - name: backup-volume
-              persistentVolumeClaim:
-                claimName: aap-backup-pvc
+            - name: github-secret-volume
+              secret:
+                secretName: {{ .Values.githubSecretName }}
             - name: controller-secret
               secret:
                 secretName: {{ .Values.controllerAdminSecretName }}
@@ -43,8 +43,11 @@ spec:
                   value: "false"
                 - name: BACKUP_PREFIX
                   value: "{{ .Values.backupFilenamePrefix }}"
+                - name: GITHUB_REPO_URL
+                  value: "{{ .Values.githubRepoUrl }}"
               volumeMounts:
                 - name: playbook-volume
                   mountPath: /opt/playbook
-                - name: backup-volume
-                  mountPath: /results
+                - name: github-secret-volume
+                  mountPath: "/etc/github-credentials"
+                  readOnly: true
