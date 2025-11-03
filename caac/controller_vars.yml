@@ -1,0 +1,10 @@
+---
+# AAP Controller Connection Parameters
+controller_host: "https://aap-controller-aap.apps.yb-ocp4.rh-igc.com"
+controller_validate_certs: false
+
+# Credentials for initial login to generate a temporary token
+# This file MUST be encrypted using `ansible-vault encrypt controller_vars.yml`
+controller_username: "admin"
+controller_password: "CHANGE_ME"
+

@@ -1,0 +1,3 @@
+# Place exported inventory files (export-results-*.yaml) from aap-backup in this directory
+# The deploy_main.yaml playbook will automatically load and deploy them
+

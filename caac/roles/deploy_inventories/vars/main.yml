@@ -1,0 +1,11 @@
+---
+# Array of AAP Inventory definitions
+controller_inventories:
+  - name: "Demo Inventory"
+    organization: "Default"
+    description: "A sample inventory for demonstrations"
+
+  - name: "Production Web Servers"
+    organization: "Default"
+    description: "Inventory for all production web servers"
+

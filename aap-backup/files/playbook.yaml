@@ -89,7 +89,7 @@
     #######################################################################
     - name: Export inventories
       ansible.controller.export:
-        inventories: true
+        inventory: "all"
       register: export_results
       retries: 5
       delay: 15
@@ -100,8 +100,9 @@
     #######################################################################
     - name: Write to output file
       copy:
-        content: "{{ export_results.stdout | from_json | to_nice_yaml(width=50, explicit_start=true, explicit_end=true) }}"
+        content: "{{ export_results.assets | to_nice_yaml(width=50, explicit_start=true, explicit_end=true) }}"
         dest: "{{ export_file }}"
+      when: export_results.assets is defined
 
     #######################################################################
     # 9️⃣ Add and commit new backup file
