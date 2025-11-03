@@ -11,8 +11,6 @@ caac/
 ├── files/                        # Place exported inventory files here
 │   └── .gitkeep                 # Keep this directory in git
 ├── README.md                    # This file
-├── MATCHING_STRATEGY.md         # Detailed strategy documentation
-├── TRANSFORMATION_NOTES.md      # Format transformation details
 └── roles/
     └── deploy_inventories/
         ├── tasks/
@@ -449,11 +447,6 @@ controller_inventories:
 ```
 
 Only the `organization.name` field is flattened - all other fields match directly.
-
-## Additional Documentation
-
-- `MATCHING_STRATEGY.md` - Detailed explanation of how exports match CaC format
-- `TRANSFORMATION_NOTES.md` - Technical details on format transformation
 
 ## Support
 
