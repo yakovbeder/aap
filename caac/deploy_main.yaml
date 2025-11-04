@@ -62,8 +62,7 @@
         controller_password: "{{ controller_password }}"
         validate_certs: "{{ controller_validate_certs }}"
       register: generated_token
-      # Temporarily disabled no_log to see the actual error message
-      # no_log: true # Prevents credentials from appearing in logs
+      no_log: true # Prevents credentials from appearing in logs
 
     - name: Display token generation error if failed
       debug:
@@ -85,10 +84,10 @@
   post_tasks:
     - name: Delete the temporary OAuth2 token
       ansible.controller.token:
-        id: "{{ generated_token.token.id }}"
+        id: "{{ generated_token.ansible_facts.controller_token.id }}"
         state: absent
         controller_host: "{{ controller_host }}"
         # Authenticate the deletion request with the token we are about to delete
-        controller_oauthtoken: "{{ generated_token.token.token }}"
+        controller_oauthtoken: "{{ generated_token.ansible_facts.controller_token.token }}"
         validate_certs: "{{ controller_validate_certs }}"
       no_log: true # Prevents token from appearing in logs
