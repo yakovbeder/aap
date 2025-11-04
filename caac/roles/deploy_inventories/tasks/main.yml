@@ -1,4 +1,55 @@
 ---
+# ========================================================================
+# Load inventory definitions from exported files or fallback to manual vars
+# ========================================================================
+- name: Find exported inventory files
+  find:
+    paths: "{{ playbook_dir }}/files"
+    patterns: "export-results-*.yaml"
+    file_type: file
+  register: exported_files
+
+- name: Load exported inventory data from files
+  set_fact:
+    exported_data: "{{ exported_data | default([]) + [(lookup('file', item.path) | from_yaml)] }}"
+  loop: "{{ exported_files.files }}"
+  when: exported_files.matched > 0
+
+- name: Transform exported inventories format (flatten organization.name to organization)
+  set_fact:
+    controller_inventories: "{{ controller_inventories | default([]) + [{
+      'name': inv.name,
+      'organization': inv.organization.name,
+      'description': inv.description | default('') | string
+    }] }}"
+  loop: "{{ exported_data | map(attribute='inventory') | flatten | default([]) }}"
+  loop_control:
+    label: "{{ inv.name }}"
+  vars:
+    inv: "{{ item }}"
+  when: exported_files.matched > 0
+
+- name: Load manual inventory definitions from role vars if no exported files found
+  include_vars:
+    file: "{{ role_path }}/vars/main.yml"
+    name: role_vars
+  when: exported_files.matched == 0
+
+- name: Set controller_inventories from role vars when no files exist
+  set_fact:
+    controller_inventories: "{{ role_vars.controller_inventories | default([]) }}"
+  when: exported_files.matched == 0
+
+- name: Display inventories to be deployed
+  debug:
+    msg: |
+      Source: {{ 'Exported files' if exported_files.matched > 0 else 'Manual vars (roles/deploy_inventories/vars/main.yml)' }}
+      Will deploy {{ controller_inventories | length }} inventories: {{ controller_inventories | map(attribute='name') | list }}
+  when: controller_inventories is defined and controller_inventories | length > 0
+
+# ========================================================================
+# Deploy inventories to AAP Controller
+# ========================================================================
 - name: "Ensure AAP Inventories are configured"
   ansible.controller.inventory:
     name: "{{ item.name }}"
@@ -11,4 +62,5 @@
   loop: "{{ controller_inventories }}"
   loop_control:
     label: "{{ item.name }}"
+  when: controller_inventories is defined and controller_inventories | length > 0
 
