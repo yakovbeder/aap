@@ -92,7 +92,7 @@
     organization: "{{ item.0.organization }}"
     description: "{{ item.1.description | default(omit) }}"
     enabled: "{{ item.1.enabled | default(true) }}"
-    variables: "{{ item.1.variables | default(omit) }}"
+    variables: "{{ host_vars | default(omit) }}"
     state: present
     controller_host: "{{ controller_host }}"
     controller_oauthtoken: "{{ generated_token.ansible_facts.controller_token.token }}"
@@ -100,8 +100,23 @@
   loop: "{{ inventory_host_mapping | subelements('hosts') }}"
   loop_control:
     label: "{{ item.0.inventory }}/{{ item.1.name }}"
+  vars:
+    host_vars: "{{ item.1.variables | default('') | trim | default(omit, true) }}"
   when: 
     - exported_files.matched > 0
     - inventory_host_mapping is defined
     - inventory_host_mapping | length > 0
+  register: host_results
+  ignore_errors: true
+
+- name: "Display host creation errors"
+  debug:
+    msg: |
+      Failed to create host: {{ item.item.0.inventory }}/{{ item.item.1.name }}
+      Error: {{ item.msg | default('Unknown error') }}
+  loop: "{{ host_results.results | default([]) }}"
+  when: 
+    - host_results is defined
+    - item.failed is defined
+    - item.failed
 
