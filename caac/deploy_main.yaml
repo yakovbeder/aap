@@ -82,6 +82,15 @@
   # POST-TASKS: Clean up by deleting the temporary token
   # ========================================================================
   post_tasks:
+    - name: Debug token structure for cleanup
+      debug:
+        msg: |
+          Token ID: {{ generated_token.ansible_facts.controller_token.id | default('NOT FOUND') }}
+          Token exists: {{ generated_token.ansible_facts.controller_token.token is defined }}
+          Token length: {{ generated_token.ansible_facts.controller_token.token | length | default(0) }}
+      when: generated_token is defined and generated_token.ansible_facts.controller_token is defined
+      no_log: true
+
     - name: Delete the temporary OAuth2 token
       ansible.controller.token:
         id: "{{ generated_token.ansible_facts.controller_token.id }}"
@@ -90,4 +99,15 @@
         # Authenticate the deletion request with the token we are about to delete
         controller_oauthtoken: "{{ generated_token.ansible_facts.controller_token.token }}"
         validate_certs: "{{ controller_validate_certs }}"
-      no_log: true # Prevents token from appearing in logs
+      register: token_deletion
+      # Temporarily disabled no_log to see the error
+      # no_log: true # Prevents token from appearing in logs
+      ignore_errors: true
+
+    - name: Display token deletion error if failed
+      debug:
+        msg: |
+          Token deletion failed!
+          Error: {{ token_deletion.msg | default('Unknown error') }}
+          Full error details: {{ token_deletion | to_nice_json }}
+      when: token_deletion is failed
