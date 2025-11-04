@@ -18,10 +18,35 @@
         msg: |
           Variable check:
           - controller_host: {{ 'DEFINED' if controller_host is defined else 'MISSING' }} ({{ controller_host | default('NOT SET') }})
-          - controller_username: {{ 'DEFINED' if controller_username is defined else 'MISSING' }}
-          - controller_password: {{ 'DEFINED' if controller_password is defined else 'MISSING' }}
+          - controller_username: {{ 'DEFINED' if controller_username is defined else 'MISSING' }} ({{ controller_username | default('NOT SET') }})
+          - controller_password: {{ 'DEFINED' if controller_password is defined else 'MISSING' }} (length: {{ controller_password | length | default(0) }})
           - controller_validate_certs: {{ 'DEFINED' if controller_validate_certs is defined else 'MISSING' }} ({{ controller_validate_certs | default('NOT SET') }})
       failed_when: controller_host is not defined or controller_username is not defined or controller_password is not defined
+
+    - name: Test controller connection with basic auth
+      uri:
+        url: "{{ controller_host }}/api/v2/me/"
+        method: GET
+        user: "{{ controller_username }}"
+        password: "{{ controller_password }}"
+        validate_certs: "{{ controller_validate_certs }}"
+        status_code: [200, 401]
+      register: connection_test
+      ignore_errors: true
+
+    - name: Display connection test result
+      debug:
+        msg: |
+          Connection test result:
+          Status: {{ connection_test.status | default('Unknown') }}
+          {% if connection_test.status == 200 %}
+          Successfully authenticated to controller!
+          {% elif connection_test.status == 401 %}
+          Authentication failed - please verify username and password
+          {% else %}
+          Connection test failed: {{ connection_test.msg | default('Unknown error') }}
+          {% endif %}
+      when: connection_test is defined
 
     - name: Generate a temporary OAuth2 token for this playbook run
       ansible.controller.token:
