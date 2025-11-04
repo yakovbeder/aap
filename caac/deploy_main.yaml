@@ -10,54 +10,9 @@
     - controller_vars.yml
 
   # ========================================================================
-  # PRE-TASKS: Load exported inventories and authenticate
+  # PRE-TASKS: Authenticate and create a temporary token for this run
   # ========================================================================
   pre_tasks:
-    - name: Find exported inventory files
-      find:
-        paths: "{{ playbook_dir }}/files"
-        patterns: "export-results-*.yaml"
-        file_type: file
-      register: exported_files
-
-    - name: Load exported inventory data from files
-      set_fact:
-        exported_data: "{{ exported_data | default([]) + [(lookup('file', item.path) | from_yaml)] }}"
-      loop: "{{ exported_files.files }}"
-      when: exported_files.matched > 0
-
-    - name: Transform exported inventories format (flatten organization.name to organization)
-      set_fact:
-        controller_inventories: "{{ controller_inventories | default([]) + [{
-          'name': inv.name,
-          'organization': inv.organization.name,
-          'description': inv.description | default('') | string
-        }] }}"
-      loop: "{{ exported_data | map(attribute='inventory') | flatten | default([]) }}"
-      loop_control:
-        label: "{{ inv.name }}"
-      vars:
-        inv: "{{ item }}"
-      when: exported_files.matched > 0
-
-    - name: Load manual inventory definitions from role vars if no exported files found
-      include_vars:
-        file: "{{ playbook_dir }}/roles/deploy_inventories/vars/main.yml"
-        name: role_vars
-      when: exported_files.matched == 0
-
-    - name: Set controller_inventories from role vars when no files exist
-      set_fact:
-        controller_inventories: "{{ role_vars.controller_inventories | default([]) }}"
-      when: exported_files.matched == 0
-
-    - name: Display inventories to be deployed
-      debug:
-        msg: |
-          Source: {{ 'Exported files' if exported_files.matched > 0 else 'Manual vars (roles/deploy_inventories/vars/main.yml)' }}
-          Will deploy {{ controller_inventories | length }} inventories: {{ controller_inventories | map(attribute='name') | list }}
-      when: controller_inventories is defined
-
     - name: Generate a temporary OAuth2 token for this playbook run
       ansible.controller.token:
         description: "Temporary token for CaC playbook run on {{ ansible_date_time.iso8601 }}"
@@ -89,4 +44,3 @@
         controller_oauthtoken: "{{ generated_token.token.token }}"
         validate_certs: "{{ controller_validate_certs }}"
       no_log: true # Prevents token from appearing in logs
-
