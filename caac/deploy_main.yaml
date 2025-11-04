@@ -14,43 +14,12 @@
   # ========================================================================
   pre_tasks:
     - name: Verify controller connection variables are defined
-      debug:
-        msg: |
-          Variable check:
-          - controller_host: {{ 'DEFINED' if controller_host is defined else 'MISSING' }} ({{ controller_host | default('NOT SET') }})
-          - controller_username: {{ 'DEFINED' if controller_username is defined else 'MISSING' }} ({{ controller_username | default('NOT SET') }})
-          - controller_password: {{ 'DEFINED' if controller_password is defined else 'MISSING' }} (length: {{ controller_password | length | default(0) }})
-          - controller_validate_certs: {{ 'DEFINED' if controller_validate_certs is defined else 'MISSING' }} ({{ controller_validate_certs | default('NOT SET') }})
-      failed_when: controller_host is not defined or controller_username is not defined or controller_password is not defined
-
-    - name: Test controller login endpoint
-      uri:
-        url: "{{ controller_host }}/api/login/"
-        method: POST
-        user: "{{ controller_username }}"
-        password: "{{ controller_password }}"
-        validate_certs: "{{ controller_validate_certs }}"
-        force_basic_auth: true
-        status_code: [200, 401, 403]
-        body_format: json
-      register: login_test
-      ignore_errors: true
-
-    - name: Display login test result
-      debug:
-        msg: |
-          Login test result:
-          Status: {{ login_test.status | default('Unknown') }}
-          {% if login_test.status == 200 %}
-          Successfully authenticated to controller!
-          {% elif login_test.status == 401 %}
-          Authentication failed (401) - please verify username and password are correct
-          {% elif login_test.status == 403 %}
-          Authentication failed (403) - account may be disabled or lacks permissions
-          {% else %}
-          Login test failed: {{ login_test.msg | default('Unknown error') }}
-          {% endif %}
-      when: login_test is defined
+      assert:
+        that:
+          - controller_host is defined
+          - controller_username is defined
+          - controller_password is defined
+        fail_msg: "Missing required controller connection variables. Please check controller_vars.yml"
 
     - name: Generate a temporary OAuth2 token for this playbook run
       ansible.controller.token:
@@ -64,13 +33,6 @@
       register: generated_token
       no_log: true # Prevents credentials from appearing in logs
 
-    - name: Display token generation error if failed
-      debug:
-        msg: |
-          Token generation failed!
-          Error: {{ generated_token.msg | default('Unknown error') }}
-          Full error details: {{ generated_token | to_nice_json }}
-      when: generated_token is failed
 
   # ========================================================================
   # MAIN TASKS: Include roles to deploy AAP resources
@@ -82,15 +44,6 @@
   # POST-TASKS: Clean up by deleting the temporary token
   # ========================================================================
   post_tasks:
-    - name: Debug token structure for cleanup
-      debug:
-        msg: |
-          Token ID: {{ generated_token.ansible_facts.controller_token.id | default('NOT FOUND') }}
-          Token exists: {{ generated_token.ansible_facts.controller_token.token is defined }}
-          Token length: {{ generated_token.ansible_facts.controller_token.token | length | default(0) }}
-      when: generated_token is defined and generated_token.ansible_facts.controller_token is defined
-      no_log: true
-
     - name: Delete the temporary OAuth2 token
       ansible.controller.token:
         existing_token_id: "{{ generated_token.ansible_facts.controller_token.id }}"
@@ -99,14 +52,4 @@
         # Authenticate the deletion request with the token we are about to delete
         controller_oauthtoken: "{{ generated_token.ansible_facts.controller_token.token }}"
         validate_certs: "{{ controller_validate_certs }}"
-      register: token_deletion
       no_log: true # Prevents token from appearing in logs
-      ignore_errors: true
-
-    - name: Display token deletion error if failed
-      debug:
-        msg: |
-          Token deletion failed!
-          Error: {{ token_deletion.msg | default('Unknown error') }}
-          Full error details: {{ token_deletion | to_nice_json }}
-      when: token_deletion is failed
