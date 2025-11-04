@@ -103,17 +103,4 @@
     - exported_files.matched > 0
     - inventory_host_mapping is defined
     - inventory_host_mapping | length > 0
-  register: host_results
-  ignore_errors: true
-
-- name: "Display host creation errors"
-  debug:
-    msg: |
-      Failed to create host: {{ item.item.0.inventory }}/{{ item.item.1.name }}
-      Error: {{ item.msg | default('Unknown error') }}
-  loop: "{{ host_results.results | default([]) }}"
-  when: 
-    - host_results is defined
-    - item.failed is defined
-    - item.failed
 
