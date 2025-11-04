@@ -2,7 +2,7 @@
 - name: Configure Ansible Automation Platform
   hosts: localhost
   connection: local
-  gather_facts: false
+  gather_facts: true
 
   vars_files:
     # This file contains the controller_username and controller_password
