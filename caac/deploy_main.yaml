@@ -23,30 +23,34 @@
           - controller_validate_certs: {{ 'DEFINED' if controller_validate_certs is defined else 'MISSING' }} ({{ controller_validate_certs | default('NOT SET') }})
       failed_when: controller_host is not defined or controller_username is not defined or controller_password is not defined
 
-    - name: Test controller connection with basic auth
+    - name: Test controller login endpoint
       uri:
-        url: "{{ controller_host }}/api/v2/me/"
-        method: GET
+        url: "{{ controller_host }}/api/login/"
+        method: POST
         user: "{{ controller_username }}"
         password: "{{ controller_password }}"
         validate_certs: "{{ controller_validate_certs }}"
-        status_code: [200, 401]
-      register: connection_test
+        force_basic_auth: true
+        status_code: [200, 401, 403]
+        body_format: json
+      register: login_test
       ignore_errors: true
 
-    - name: Display connection test result
+    - name: Display login test result
       debug:
         msg: |
-          Connection test result:
-          Status: {{ connection_test.status | default('Unknown') }}
-          {% if connection_test.status == 200 %}
+          Login test result:
+          Status: {{ login_test.status | default('Unknown') }}
+          {% if login_test.status == 200 %}
           Successfully authenticated to controller!
-          {% elif connection_test.status == 401 %}
-          Authentication failed - please verify username and password
+          {% elif login_test.status == 401 %}
+          Authentication failed (401) - please verify username and password are correct
+          {% elif login_test.status == 403 %}
+          Authentication failed (403) - account may be disabled or lacks permissions
           {% else %}
-          Connection test failed: {{ connection_test.msg | default('Unknown error') }}
+          Login test failed: {{ login_test.msg | default('Unknown error') }}
           {% endif %}
-      when: connection_test is defined
+      when: login_test is defined
 
     - name: Generate a temporary OAuth2 token for this playbook run
       ansible.controller.token:
