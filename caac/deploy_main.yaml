@@ -13,6 +13,16 @@
   # PRE-TASKS: Authenticate and create a temporary token for this run
   # ========================================================================
   pre_tasks:
+    - name: Verify controller connection variables are defined
+      debug:
+        msg: |
+          Variable check:
+          - controller_host: {{ 'DEFINED' if controller_host is defined else 'MISSING' }} ({{ controller_host | default('NOT SET') }})
+          - controller_username: {{ 'DEFINED' if controller_username is defined else 'MISSING' }}
+          - controller_password: {{ 'DEFINED' if controller_password is defined else 'MISSING' }}
+          - controller_validate_certs: {{ 'DEFINED' if controller_validate_certs is defined else 'MISSING' }} ({{ controller_validate_certs | default('NOT SET') }})
+      failed_when: controller_host is not defined or controller_username is not defined or controller_password is not defined
+
     - name: Generate a temporary OAuth2 token for this playbook run
       ansible.controller.token:
         description: "Temporary token for CaC playbook run on {{ ansible_date_time.iso8601 }}"
@@ -23,7 +33,16 @@
         controller_password: "{{ controller_password }}"
         validate_certs: "{{ controller_validate_certs }}"
       register: generated_token
-      no_log: true # Prevents credentials from appearing in logs
+      # Temporarily disabled no_log to see the actual error message
+      # no_log: true # Prevents credentials from appearing in logs
+
+    - name: Display token generation error if failed
+      debug:
+        msg: |
+          Token generation failed!
+          Error: {{ generated_token.msg | default('Unknown error') }}
+          Full error details: {{ generated_token | to_nice_json }}
+      when: generated_token is failed
 
   # ========================================================================
   # MAIN TASKS: Include roles to deploy AAP resources
