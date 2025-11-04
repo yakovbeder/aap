@@ -22,6 +22,7 @@
       'organization': inv.organization.name,
       'description': inv.description | default('') | string
     }] }}"
+    inventory_hosts: "{{ inventory_hosts | default({}) | combine({ inv.name: inv.related.hosts | default([]) }) }}"
   loop: "{{ exported_data | map(attribute='inventory') | flatten | default([]) }}"
   loop_control:
     label: "{{ inv.name }}"
@@ -63,4 +64,44 @@
   loop_control:
     label: "{{ item.name }}"
   when: controller_inventories is defined and controller_inventories | length > 0
+  register: inventory_results
+
+# ========================================================================
+# Deploy hosts to inventories
+# ========================================================================
+- name: "Prepare inventory-host mapping for deployment"
+  set_fact:
+    inventory_host_mapping: "{{ inventory_host_mapping | default([]) + [{
+      'inventory': inv_item.name,
+      'organization': inv_item.organization,
+      'hosts': inventory_hosts[inv_item.name] | default([])
+    }] }}"
+  loop: "{{ controller_inventories }}"
+  vars:
+    inv_item: "{{ item }}"
+  when: 
+    - exported_files.matched > 0
+    - inventory_hosts is defined
+    - inventory_hosts[item.name] is defined
+    - inventory_hosts[item.name] | length > 0
+
+- name: "Ensure hosts are configured in inventories"
+  ansible.controller.host:
+    name: "{{ item.1.name }}"
+    inventory: "{{ item.0.inventory }}"
+    organization: "{{ item.0.organization }}"
+    description: "{{ item.1.description | default(omit) }}"
+    enabled: "{{ item.1.enabled | default(true) }}"
+    variables: "{{ item.1.variables | default(omit) }}"
+    state: present
+    controller_host: "{{ controller_host }}"
+    controller_oauthtoken: "{{ generated_token.ansible_facts.controller_token.token }}"
+    validate_certs: "{{ controller_validate_certs }}"
+  loop: "{{ inventory_host_mapping | subelements('hosts') }}"
+  loop_control:
+    label: "{{ item.0.inventory }}/{{ item.1.name }}"
+  when: 
+    - exported_files.matched > 0
+    - inventory_host_mapping is defined
+    - inventory_host_mapping | length > 0
 
