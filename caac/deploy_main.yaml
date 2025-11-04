@@ -93,15 +93,14 @@
 
     - name: Delete the temporary OAuth2 token
       ansible.controller.token:
-        id: "{{ generated_token.ansible_facts.controller_token.id }}"
+        existing_token_id: "{{ generated_token.ansible_facts.controller_token.id }}"
         state: absent
         controller_host: "{{ controller_host }}"
         # Authenticate the deletion request with the token we are about to delete
         controller_oauthtoken: "{{ generated_token.ansible_facts.controller_token.token }}"
         validate_certs: "{{ controller_validate_certs }}"
       register: token_deletion
-      # Temporarily disabled no_log to see the error
-      # no_log: true # Prevents token from appearing in logs
+      no_log: true # Prevents token from appearing in logs
       ignore_errors: true
 
     - name: Display token deletion error if failed
