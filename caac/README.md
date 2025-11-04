@@ -1,6 +1,6 @@
 # Configuration as Code (CaC) for Ansible Automation Platform
 
-This directory contains Ansible playbooks to manage AAP resources using Configuration as Code (CaC) principles. The playbook can deploy inventories from exported backup files or manual definitions.
+This directory contains Ansible playbooks to manage AAP resources using Configuration as Code (CaC) principles. The playbook automatically deploys inventories and their hosts from exported backup files, or falls back to manual definitions if no exported files are found.
 
 ## Directory Structure
 
@@ -164,7 +164,8 @@ If you plan to run this playbook from AAP 2.5 as a Job Template, you need to cre
 2. The playbook will:
    - Automatically decrypt `controller_vars.yml` using the Vault credential
    - Load exported files from `files/` directory (if present in repository)
-   - Deploy inventories to AAP
+   - Deploy all inventories and hosts to AAP
+   - Ensure the controller state matches the exported backup (idempotent)
 
 ### Important Notes for AAP 2.5 Execution
 
@@ -208,8 +209,11 @@ If running the playbook locally (not from AAP), use these instructions.
 
 The playbook will:
 - Automatically find all `export-results-*.yaml` files in `files/`
+- Extract inventories and their hosts from the exported files
 - Transform the format (flattens `organization.name` → `organization`)
-- Deploy inventories using the `deploy_inventories` role
+- Deploy all inventories to AAP Controller
+- Deploy all hosts to their respective inventories
+- Import host variables (handles both YAML strings and JSON dicts)
 
 ### Option 2: Deploy from Manual Definitions
 
@@ -339,12 +343,18 @@ Source: Exported files
 Will deploy 3 inventories: ['Demo Inventory', 'yb-hosts-static', 'yb-vmware-dynamic']
 ```
 
-or
+The playbook will also deploy all hosts found in the exported files. For example:
+- Demo Inventory will have its `localhost` host imported
+- yb-hosts-static will have its hosts (localhost, ybaap.yb-ocp4.rh-igc.com, ybca.yb-ocp4.rh-igc.com) imported
+- yb-vmware-dynamic will have all its VMware hosts imported with their variables
 
+If no exported files are found, it falls back to manual definitions:
 ```
 Source: Manual vars (roles/deploy_inventories/vars/main.yml)
 Will deploy 2 inventories: ['Demo Inventory', 'Production Web Servers']
 ```
+
+**Note:** Manual definitions only create inventories, not hosts. To import hosts, use exported backup files.
 
 ## Workflow Example
 
@@ -445,6 +455,10 @@ inventory:
   - name: "Demo Inventory"
     organization:
       name: "Default"  # Nested structure
+    related:
+      hosts:
+        - name: "localhost"
+          variables: "ansible_connection: local\n..."
 ```
 
 **CaC Format (for deployment):**
@@ -452,9 +466,23 @@ inventory:
 controller_inventories:
   - name: "Demo Inventory"
     organization: "Default"  # Flat structure
+
+# Hosts are extracted and deployed separately
 ```
 
-Only the `organization.name` field is flattened - all other fields match directly.
+**Key Transformations:**
+- `organization.name` → `organization` (flattened)
+- Hosts are extracted from `related.hosts` and deployed to their respective inventories
+- Host variables are automatically parsed (supports both YAML strings and JSON dicts)
+- Empty descriptions and variables are omitted
+
+## Idempotent Behavior
+
+The playbook is **idempotent**, meaning:
+- If an inventory/host already exists with the correct configuration → `changed: false`
+- If an inventory/host is missing or has different configuration → `changed: true` (will be created/updated)
+- Running the playbook multiple times produces the same result
+- Deleted inventories and hosts will be automatically recreated from the export file
 
 ## Support
 
