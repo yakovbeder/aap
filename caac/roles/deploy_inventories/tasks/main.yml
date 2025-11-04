@@ -89,10 +89,9 @@
   ansible.controller.host:
     name: "{{ item.1.name }}"
     inventory: "{{ item.0.inventory }}"
-    organization: "{{ item.0.organization }}"
     description: "{{ item.1.description | default(omit) }}"
     enabled: "{{ item.1.enabled | default(true) }}"
-    variables: "{{ host_vars | default(omit) }}"
+    variables: "{{ (item.1.variables | trim | from_yaml) if (item.1.variables is string and item.1.variables | trim != '') else (item.1.variables if item.1.variables is mapping else omit) }}"
     state: present
     controller_host: "{{ controller_host }}"
     controller_oauthtoken: "{{ generated_token.ansible_facts.controller_token.token }}"
@@ -100,8 +99,6 @@
   loop: "{{ inventory_host_mapping | subelements('hosts') }}"
   loop_control:
     label: "{{ item.0.inventory }}/{{ item.1.name }}"
-  vars:
-    host_vars: "{{ item.1.variables | default('') | trim | default(omit, true) }}"
   when: 
     - exported_files.matched > 0
     - inventory_host_mapping is defined
