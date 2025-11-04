@@ -26,7 +26,7 @@ caac/
    ```bash
    ansible-galaxy collection install ansible.controller
    ```
-3. **Access to AAP Controller** with admin credentials
+3. **Access to AAP Controller** with admin credentials (password from Kubernetes secret `aap-controller-admin-password`)
 4. **Vault password file** (for local execution) OR **Vault credential in AAP 2.5** (for execution from AAP)
 
 ## Initial Setup
@@ -56,8 +56,15 @@ vi controller_vars.yml
 
 Update these values:
 - `controller_host`: Your AAP controller URL
-- `controller_username`: Admin username
-- `controller_password`: Admin password
+- `controller_username`: Admin username (typically "admin")
+- `controller_password`: **The password from the Kubernetes secret `aap-controller-admin-password`**, NOT the admin user's password. This secret contains the actual controller admin password.
+
+**Important:** The password should be retrieved from the Kubernetes secret `aap-controller-admin-password` in the `aap` namespace. You can get it using:
+
+```bash
+# Get the password from the secret
+oc get secret aap-controller-admin-password -n aap -o jsonpath='{.data.password}' | base64 -d
+```
 
 Example:
 ```yaml
@@ -65,7 +72,7 @@ Example:
 controller_host: "https://aap-controller-aap.apps.yb-ocp4.rh-igc.com"
 controller_validate_certs: false
 controller_username: "admin"
-controller_password: "your-password-here"
+controller_password: "password-from-secret-aap-controller-admin-password"
 ```
 
 ### Step 3: Encrypt controller_vars.yml with Ansible Vault
@@ -426,6 +433,7 @@ cat roles/deploy_inventories/vars/main.yml
    ```bash
    ansible-vault rekey controller_vars.yml --vault-password-file ~/.vault_pass
    ```
+6. **Use the Kubernetes secret password**: The `controller_password` should be retrieved from the `aap-controller-admin-password` secret, not hardcoded. This ensures the password matches what's actually configured in the cluster.
 
 ## Format Transformation
 
@@ -452,6 +460,8 @@ Only the `organization.name` field is flattened - all other fields match directl
 
 For issues:
 1. Check playbook output for error messages
-2. Verify controller credentials are correct
+2. Verify controller credentials are correct:
+   - Ensure `controller_password` matches the value from `aap-controller-admin-password` secret
+   - Verify the secret exists: `oc get secret aap-controller-admin-password -n aap`
 3. Ensure exported files are in the correct format
 4. Verify ansible.controller collection is installed
