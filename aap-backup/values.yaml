@@ -1,5 +1,5 @@
 namespace: aap
-schedule: "0 */6 * * *" # every 6 hours
+schedule: "0 0 * * 0" # every sunday at midnight
 backupFilenamePrefix: export-results
 # GitHub Configuration
 githubSecretName: "github-credentials" # Secret containing username and password keys
