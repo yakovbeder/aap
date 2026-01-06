@@ -1,5 +1,5 @@
 ---
-- name: Manage Virtual Machine Power State
+- name: Create Virtual Machine Snapshot
   hosts: localhost
   gather_facts: false
   connection: local
@@ -11,14 +11,15 @@
     vcenter_certs: "{{ lookup('env', 'VMWARE_VALIDATE_CERTS') }}"
 
   tasks:
-    - name: Set VM power state
-      vmware.vmware.vm_powerstate:
+    - name: Create VM snapshot
+      vmware.vmware.vm_snapshot:
         hostname: "{{ vcenter_host }}"
         username: "{{ vcenter_user }}"
         password: "{{ vcenter_pass }}"
         validate_certs: "{{ vcenter_certs | default(false, true) }}"
         datacenter: "{{ vm_datacenter }}"
         name: "{{ vm_name }}"
-        state: "{{ vm_state }}"
+        state: present
+        snapshot_name: "{{ snapshot_name }}"
       delegate_to: localhost
 
