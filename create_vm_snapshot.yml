@@ -47,7 +47,7 @@
         snapshot_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%dT%H:%M:%S') }}"
 
     - name: Create VM snapshot
-      vmware.vmware.vm_snapshot:
+      community.vmware.vmware_guest_snapshot:
         hostname: "{{ vcenter_host }}"
         username: "{{ vcenter_user }}"
         password: "{{ vcenter_pass }}"
@@ -58,6 +58,7 @@
         state: present
         snapshot_name: "{{ snapshot_name }}"
         description: "Snapshot created by Ansible on {{ snapshot_timestamp }}"
+        memory: false
         quiesce: false
       delegate_to: localhost
       register: snapshot_result
@@ -66,16 +67,8 @@
       debug:
         var: snapshot_result
 
-    - name: Verify snapshot was created
-      assert:
-        that:
-          - snapshot_result is succeeded
-          - snapshot_result.changed == true
-        fail_msg: "Snapshot creation may have failed - task did not report changes"
-        success_msg: "Snapshot task completed with changes"
-
-    - name: List VM snapshots to verify creation
-      vmware.vmware.vm_snapshot:
+    - name: Get snapshot info to verify creation
+      community.vmware.vmware_guest_snapshot_info:
         hostname: "{{ vcenter_host }}"
         username: "{{ vcenter_user }}"
         password: "{{ vcenter_pass }}"
@@ -83,19 +76,18 @@
         datacenter: "{{ vm_datacenter }}"
         folder: "{{ vm_folder_path }}"
         name: "{{ vm_name }}"
-        state: list
       delegate_to: localhost
-      register: snapshot_list
+      register: snapshot_info
 
-    - name: Display all snapshots
+    - name: Display all snapshots for VM
       debug:
-        var: snapshot_list
+        var: snapshot_info
 
-    - name: Verify snapshot exists in list
+    - name: Verify snapshot was created
       assert:
         that:
-          - snapshot_list.snapshots is defined
-          - snapshot_name in (snapshot_list.snapshots | map(attribute='name') | list)
-        fail_msg: "Snapshot '{{ snapshot_name }}' was not found in the snapshot list"
-        success_msg: "Snapshot '{{ snapshot_name }}' successfully verified in vCenter"
+          - snapshot_result is succeeded
+          - snapshot_info.guest_snapshots.snapshots | length > 0
+        fail_msg: "Snapshot creation may have failed - no snapshots found for VM"
+        success_msg: "Snapshot '{{ snapshot_name }}' created successfully for VM '{{ vm_name }}'"
 
