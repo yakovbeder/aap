@@ -42,6 +42,10 @@
       debug:
         msg: "Using folder path: {{ vm_folder_path }}"
 
+    - name: Get current timestamp
+      set_fact:
+        snapshot_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%dT%H:%M:%S') }}"
+
     - name: Create VM snapshot
       vmware.vmware.vm_snapshot:
         hostname: "{{ vcenter_host }}"
@@ -53,7 +57,7 @@
         name: "{{ vm_name }}"
         state: present
         snapshot_name: "{{ snapshot_name }}"
-        description: "Snapshot created by Ansible on {{ ansible_date_time.iso8601 }}"
+        description: "Snapshot created by Ansible on {{ snapshot_timestamp }}"
         memory: false
         quiesce: false
       delegate_to: localhost
