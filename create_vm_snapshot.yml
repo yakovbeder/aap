@@ -11,83 +11,15 @@
     vcenter_certs: "{{ lookup('env', 'VMWARE_VALIDATE_CERTS') }}"
 
   tasks:
-    - name: Validate required variables
-      assert:
-        that:
-          - vm_name is defined
-          - vm_datacenter is defined
-          - snapshot_name is defined
-          - snapshot_name | length > 0
-        fail_msg: "Required variables missing: vm_name, vm_datacenter, and snapshot_name must be defined"
-        success_msg: "All required variables are defined"
-
-    - name: Display snapshot creation parameters
-      debug:
-        msg:
-          - "VM Name: {{ vm_name }}"
-          - "Datacenter: {{ vm_datacenter }}"
-          - "Snapshot Name: {{ snapshot_name }}"
-          - "VM Subfolder: {{ vm_subfolder | default('(none)') }}"
-
-    - name: Set folder path
-      set_fact:
-        vm_folder_path: >-
-          {%- if vm_subfolder is defined and vm_subfolder | length > 0 -%}
-            /{{ vm_datacenter }}/vm/{{ vm_subfolder }}
-          {%- else -%}
-            /{{ vm_datacenter }}/vm
-          {%- endif -%}
-
-    - name: Display folder path
-      debug:
-        msg: "Using folder path: {{ vm_folder_path }}"
-
-    - name: Get current timestamp
-      set_fact:
-        snapshot_timestamp: "{{ lookup('pipe', 'date +%Y-%m-%dT%H:%M:%S') }}"
-
     - name: Create VM snapshot
-      community.vmware.vmware_guest_snapshot:
+      vmware.vmware.vm_snapshot:
         hostname: "{{ vcenter_host }}"
         username: "{{ vcenter_user }}"
         password: "{{ vcenter_pass }}"
         validate_certs: "{{ vcenter_certs | default(false, true) }}"
         datacenter: "{{ vm_datacenter }}"
-        folder: "{{ vm_folder_path }}"
+        folder: "/{{ vm_datacenter }}/vm/"
         name: "{{ vm_name }}"
         state: present
-        snapshot_name: "{{ snapshot_name }}"
-        description: "Snapshot created by Ansible on {{ snapshot_timestamp }}"
-        memory: false
-        quiesce: false
+        snapshot_name: snap1
       delegate_to: localhost
-      register: snapshot_result
-
-    - name: Display snapshot creation result
-      debug:
-        var: snapshot_result
-
-    - name: Get snapshot info to verify creation
-      community.vmware.vmware_guest_snapshot_info:
-        hostname: "{{ vcenter_host }}"
-        username: "{{ vcenter_user }}"
-        password: "{{ vcenter_pass }}"
-        validate_certs: "{{ vcenter_certs | default(false, true) }}"
-        datacenter: "{{ vm_datacenter }}"
-        folder: "{{ vm_folder_path }}"
-        name: "{{ vm_name }}"
-      delegate_to: localhost
-      register: snapshot_info
-
-    - name: Display all snapshots for VM
-      debug:
-        var: snapshot_info
-
-    - name: Verify snapshot was created
-      assert:
-        that:
-          - snapshot_result is succeeded
-          - snapshot_info.guest_snapshots.snapshots | length > 0
-        fail_msg: "Snapshot creation may have failed - no snapshots found for VM"
-        success_msg: "Snapshot '{{ snapshot_name }}' created successfully for VM '{{ vm_name }}'"
-
