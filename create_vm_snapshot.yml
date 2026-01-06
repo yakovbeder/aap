@@ -18,7 +18,7 @@
         password: "{{ vcenter_pass }}"
         validate_certs: "{{ vcenter_certs | default(false, true) }}"
         datacenter: "{{ vm_datacenter }}"
-        folder: "/{{ vm_datacenter }}/vm/"
+        folder: "/{{ vm_datacenter }}/vm/{{ vm_subfolder | default('') }}"
         name: "{{ vm_name }}"
         state: present
         snapshot_name: "{{ snapshot_name }}"
