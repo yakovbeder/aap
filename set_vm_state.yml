@@ -1,0 +1,17 @@
+---
+- name: Manage Virtual Machine Power State
+  hosts: localhost
+  gather_facts: false
+  connection: local
+
+  tasks:
+    - name: Set VM power state
+      community.vmware.vmware_guest_powerstate:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs | default(false) }}"
+        name: "{{ vm_name }}"
+        state: "{{ vm_state }}"
+      delegate_to: localhost
+
