@@ -58,7 +58,6 @@
         state: present
         snapshot_name: "{{ snapshot_name }}"
         description: "Snapshot created by Ansible on {{ snapshot_timestamp }}"
-        memory: false
         quiesce: false
       delegate_to: localhost
       register: snapshot_result
