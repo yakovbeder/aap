@@ -4,13 +4,19 @@
   gather_facts: false
   connection: local
 
+  vars:
+    vcenter_host: "{{ lookup('env', 'VMWARE_HOST') }}"
+    vcenter_user: "{{ lookup('env', 'VMWARE_USER') }}"
+    vcenter_pass: "{{ lookup('env', 'VMWARE_PASSWORD') }}"
+    vcenter_certs: "{{ lookup('env', 'VMWARE_VALIDATE_CERTS') }}"
+
   tasks:
     - name: Set VM power state
       vmware.vmware.vm_powerstate:
-        hostname: "{{ vcenter_hostname }}"
-        username: "{{ vcenter_username }}"
-        password: "{{ vcenter_password }}"
-        validate_certs: "{{ vcenter_validate_certs | default(false) }}"
+        hostname: "{{ vcenter_host }}"
+        username: "{{ vcenter_user }}"
+        password: "{{ vcenter_pass }}"
+        validate_certs: "{{ vcenter_certs | default(false, true) }}"
         datacenter: "{{ vm_datacenter }}"
         name: "{{ vm_name }}"
         state: "{{ vm_state }}"
