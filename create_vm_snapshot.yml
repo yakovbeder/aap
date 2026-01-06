@@ -6,11 +6,12 @@
 
   tasks:
     - name: Create VM snapshot
-      community.vmware.vmware_guest_snapshot:
+      vmware.vmware.vm_snapshot:
         hostname: "{{ vcenter_hostname }}"
         username: "{{ vcenter_username }}"
         password: "{{ vcenter_password }}"
         validate_certs: "{{ vcenter_validate_certs | default(false) }}"
+        datacenter: "{{ vm_datacenter }}"
         name: "{{ vm_name }}"
         state: present
         snapshot_name: "{{ snapshot_name }}"

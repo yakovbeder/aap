@@ -6,11 +6,12 @@
 
   tasks:
     - name: Set VM power state
-      community.vmware.vmware_guest_powerstate:
+      vmware.vmware.vm_powerstate:
         hostname: "{{ vcenter_hostname }}"
         username: "{{ vcenter_username }}"
         password: "{{ vcenter_password }}"
         validate_certs: "{{ vcenter_validate_certs | default(false) }}"
+        datacenter: "{{ vm_datacenter }}"
         name: "{{ vm_name }}"
         state: "{{ vm_state }}"
       delegate_to: localhost
