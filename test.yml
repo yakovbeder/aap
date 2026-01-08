@@ -1,6 +1,0 @@
-- name: Hello World Sample
-  hosts: "{{ hosts }}"
-  tasks:
-    - name: Hello Message
-      debug:
-        msg: "Hello World!"
