@@ -1,0 +1,61 @@
+---
+# AAP Survey Specification for Create Organizations Job Template
+#
+# This file documents the survey configuration to be created in AAP.
+# Use this as a reference when setting up the Job Template survey in the AAP UI.
+#
+# To set up in AAP UI:
+# 1. Navigate to Resources -> Templates
+# 2. Edit your "Create Organization" Job Template
+# 3. Click "Survey" tab
+# 4. Add questions as defined below
+
+survey_name: "Create Organization"
+survey_description: "Provide organization details"
+
+survey_spec:
+  - question_name: "Organization Name"
+    question_description: "Name of the organization to create in AAP"
+    variable: "org_name"
+    type: "text"
+    required: true
+    min: 1
+    max: 512
+    default: ""
+
+  - question_name: "Organization Description"
+    question_description: "Optional description for the organization"
+    variable: "org_description"
+    type: "text"
+    required: false
+    min: 0
+    max: 1024
+    default: ""
+
+  - question_name: "Maximum Hosts"
+    question_description: "Optional maximum number of hosts allowed in this organization (leave empty for unlimited)"
+    variable: "org_max_hosts"
+    type: "integer"
+    required: false
+    min: 0
+    default: ""
+
+# ============================================================================
+# Alternative: Multiple Choice for Organization Type
+# ============================================================================
+# If you want to offer predefined organization templates, you can add:
+#
+#   - question_name: "Organization Type"
+#     question_description: "Select a predefined organization type"
+#     variable: "org_type"
+#     type: "multiplechoice"
+#     required: false
+#     choices:
+#       - "production"
+#       - "development"
+#       - "testing"
+#       - "custom"
+#     default: "custom"
+#
+# Then in the playbook, you could set defaults based on org_type:
+#   org_max_hosts: "{{ 500 if org_type == 'production' else 100 }}"

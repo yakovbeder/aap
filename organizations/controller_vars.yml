@@ -1,0 +1,6 @@
+---
+# AAP Controller Connection Parameters
+# This file is "secrets free" - credentials are injected by AAP Machine credential
+
+controller_host: "https://aap-controller-aap.apps.yb-ocp4.rh-igc.com"
+controller_validate_certs: false

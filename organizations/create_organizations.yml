@@ -1,0 +1,98 @@
+---
+- name: Create Organizations in Ansible Automation Platform
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars_files:
+    # This file contains controller_host and controller_validate_certs
+    # Credentials are injected by AAP Machine credential (ansible_user/ansible_password)
+    - controller_vars.yml
+
+  vars:
+    # ========================================================================
+    # SURVEY VARIABLES
+    # ========================================================================
+    # These variables are meant to be provided via AAP Survey:
+    #
+    # org_name: (required) - Name of the organization
+    # org_description: (optional) - Description of the organization
+    # org_max_hosts: (optional) - Maximum number of hosts allowed
+    #
+    # The survey will populate these variables at runtime.
+    # ========================================================================
+
+    # Build organization list from survey input
+    controller_organizations: "{{ [{'name': org_name, 'description': org_description | default(omit), 'max_hosts': org_max_hosts | default(omit)}] if org_name is defined else [] }}"
+
+  tasks:
+    # ========================================================================
+    # AUTHENTICATION: Generate temporary OAuth2 token
+    # ========================================================================
+    - name: Verify required variables are defined
+      ansible.builtin.assert:
+        that:
+          - controller_host is defined
+          - org_name is defined and org_name | length > 0
+        fail_msg: |
+          Missing required variables:
+          - controller_host: {{ 'defined' if controller_host is defined else 'MISSING' }}
+          - org_name: {{ 'defined' if (org_name is defined and org_name | length > 0) else 'MISSING - Please provide organization name via survey' }}
+
+    - name: Generate a temporary OAuth2 token for this playbook run
+      ansible.controller.token:
+        description: "Temporary token for organization creation on {{ lookup('pipe', 'date +%Y-%m-%dT%H:%M:%S') }}"
+        scope: "write"
+        state: present
+        controller_host: "{{ controller_host }}"
+        # These variables are injected by the "Machine" credential
+        # attached to the Job Template in AAP.
+        controller_username: "{{ ansible_user }}"
+        controller_password: "{{ ansible_password }}"
+        validate_certs: "{{ controller_validate_certs | default(false) }}"
+      register: generated_token
+      no_log: true
+
+    # ========================================================================
+    # MAIN TASKS: Create organizations (wrapped in block for cleanup)
+    # ========================================================================
+    - name: Create organizations block
+      block:
+        - name: Display organization to be created
+          ansible.builtin.debug:
+            msg: |
+              Creating organization:
+              - Name: {{ org_name }}
+              - Description: {{ org_description | default('N/A') }}
+              - Max Hosts: {{ org_max_hosts | default('Unlimited') }}
+
+        - name: "Ensure AAP Organization is created"
+          ansible.controller.organization:
+            name: "{{ org_name }}"
+            description: "{{ org_description | default(omit) }}"
+            max_hosts: "{{ org_max_hosts | default(omit) }}"
+            state: present
+            controller_host: "{{ controller_host }}"
+            controller_oauthtoken: "{{ generated_token.ansible_facts.controller_token.token }}"
+            validate_certs: "{{ controller_validate_certs | default(false) }}"
+          register: organization_result
+
+        - name: Display organization creation result
+          ansible.builtin.debug:
+            msg: "Organization '{{ org_name }}': {{ 'Created' if organization_result.changed else 'Already exists (no changes)' }}"
+
+      # ========================================================================
+      # CLEANUP: Always delete the temporary token (even on failure)
+      # ========================================================================
+      always:
+        - name: Delete the temporary OAuth2 token
+          ansible.controller.token:
+            existing_token_id: "{{ generated_token.ansible_facts.controller_token.id }}"
+            state: absent
+            controller_host: "{{ controller_host }}"
+            # A token cannot delete itself - must use username/password
+            controller_username: "{{ ansible_user }}"
+            controller_password: "{{ ansible_password }}"
+            validate_certs: "{{ controller_validate_certs | default(false) }}"
+          no_log: true
+          when: generated_token.ansible_facts.controller_token.id is defined
